@@ -68,5 +68,5 @@ def get_top_10_useful(request):
     top_10_users = most_useful_users.limit(10).select('name', 'total_usefulness')
     pandas_df = top_10_users.toPandas()
     table_html = pandas_df.to_html(index=False)
-    return HttpResponse(f"<h1>Top 5 Users</h1>{table_html}")
+    return HttpResponse(f"<h1>Top 10 users with useful reviews</h1>{table_html}")
 
