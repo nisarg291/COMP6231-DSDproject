@@ -3,6 +3,7 @@ from django.shortcuts import render
 from pyspark.sql import SparkSession
 from django.http import HttpResponse
 from pyspark.sql.functions import sum as _sum
+from pyspark.sql.functions import count as _count
 
 
 
@@ -31,6 +32,7 @@ def get_top_10_restaurants(request):
     table_html = pandas_df.to_html(index=False)
 
     return HttpResponse(f"<h1>Top 10 Restaurants</h1>{table_html}")
+
 
 def get_top_5_users(request):
     spark = SparkSession.builder.appName('comp6231DSD').getOrCreate()
@@ -70,3 +72,22 @@ def get_top_10_useful(request):
     table_html = pandas_df.to_html(index=False)
     return HttpResponse(f"<h1>Top 10 users with useful reviews</h1>{table_html}")
 
+
+def get_3_star_reviews(request):
+    spark = SparkSession.builder.appName('comp6231DSD').getOrCreate()
+
+    yelp_business = spark.read.json("data/yelp_academic_dataset_business.json")
+    yelp_reviews = spark.read.json("data/yelp_academic_dataset_review.json")
+
+    star4_reviews = yelp_reviews.filter((yelp_reviews.stars > 3))
+    star4_2018_reviews = star4_reviews.filter(star4_reviews.date.startswith('2018'))
+    business_4stars = star4_2018_reviews.groupBy('business_id').agg(_count('stars').alias("count"))
+    business_50 = business_4stars.filter((business_4stars['count'] >= 50))
+    business_PA = yelp_business.filter((yelp_business.state == 'PA'))
+    joined_df = business_50.join(business_PA, business_PA.business_id == business_50.business_id, 'inner')
+
+    count = joined_df.count()
+    pandas_df = joined_df.toPandas()
+    table_html = pandas_df.to_html(index=False)
+    return HttpResponse(f"<h1>Top businesses that were given 3 starts in 2018</h1>{table_html}"
+                        f"<h2>Total number</h2>{count}")
