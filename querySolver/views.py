@@ -7,16 +7,19 @@ from pyspark.sql.functions import count as _count
 
 from google.cloud import bigquery
 from django.http import JsonResponse
+import time
 
 client = bigquery.Client()
 
+
+
 def get_top_10_restaurants_with_query(request):
     # Create a BigQuery client
-    
 
     # Specify your BigQuery dataset and table
 
     # Build the SQL query
+    start_time = time.time()
     sql_query = """
     WITH Reviews_5Stars AS (
       SELECT
@@ -64,8 +67,8 @@ def get_top_10_restaurants_with_query(request):
     # Convert results to a list of dictionaries
 
     rows = [dict(row) for row in results]
-    
-    str1=""" <table border='1'>
+
+    str1 = """ <table border='1'>
             <thead>
             <tr>
                 <th>name</th>
@@ -74,15 +77,18 @@ def get_top_10_restaurants_with_query(request):
             </tr>
         </thead><tbody>"""
     for row in rows:
-        str1+='<tr><td>'+row['name']+'</td><td>'+str(row['count'])+'</td></tr>'
+        str1 += '<tr><td>' + row['name'] + '</td><td>' + str(row['count']) + '</td></tr>'
 
-    str1+="</tbody></table>"
+    str1 += "</tbody></table>"
     # Return the results as JSON
-   
+    end_time = time.time()
+    time_taken = end_time-start_time
+    print(f"Time taken: {time_taken} seconds")
     return HttpResponse(f"<h1>Top 10 Restaurants</h1>{str1}")
 
 
 def get_top_10_restaurants(request):
+    start_time = time.time()
     spark = SparkSession.builder.appName('comp6231DSD').getOrCreate()
 
     yelp_reviews = spark.read.json("data/yelp_academic_dataset_review.json")
@@ -105,11 +111,15 @@ def get_top_10_restaurants(request):
 
     # Convert Pandas DataFrame to HTML table
     table_html = pandas_df.to_html(index=False)
+    end_time = time.time()
+    time_taken = end_time - start_time
+    print(f"Time taken: {time_taken} seconds")
 
     return HttpResponse(f"<h1>Top 10 Restaurants</h1>{table_html}")
 
-def get_top_5_users_with_query(request):
 
+def get_top_5_users_with_query(request):
+    start_time = time.time()
     sql_query = """ WITH yelp_user AS (
         SELECT
             user_id,
@@ -152,7 +162,7 @@ def get_top_5_users_with_query(request):
 
     rows = [dict(row) for row in results]
 
-    str1=""" <table border='1'>
+    str1 = """ <table border='1'>
             <thead>
             <tr>
              <th>user_id</th>
@@ -162,16 +172,20 @@ def get_top_5_users_with_query(request):
             </tr>
         </thead><tbody>"""
     for row in rows:
-        str1+='<tr><td>'+row['user_id']+'</td><td>'+str(row['name'])+'</td><td>'+str(row['total_compliments'])+'</td></tr>'
+        str1 += '<tr><td>' + row['user_id'] + '</td><td>' + str(row['name']) + '</td><td>' + str(
+            row['total_compliments']) + '</td></tr>'
 
-    str1+="</tbody></table>"
+    str1 += "</tbody></table>"
     # Return the results as JSON
-   
+    end_time = time.time()
+    time_taken = end_time - start_time
+    print(f"Time taken: {time_taken} seconds")
+
     return HttpResponse(f"<h1>Top 10 Restaurants</h1>{str1}")
 
 
-
 def get_top_5_users(request):
+    start_time = time.time()
     spark = SparkSession.builder.appName('comp6231DSD').getOrCreate()
 
     yelp_user = spark.read.json("data/yelp_academic_dataset_user.json")
@@ -186,11 +200,15 @@ def get_top_5_users(request):
 
     pandas_df = top_user_names.toPandas()
     table_html = pandas_df.to_html(index=False)
+    end_time = time.time()
+    time_taken = end_time - start_time
+    print(f"Time taken: {time_taken} seconds")
 
     return HttpResponse(f"<h1>Top 5 Users</h1>{table_html}")
 
+
 def get_top_10_useful_with_query(request):
-    
+    start_time=time.time()
     sql_query = """ WITH UserUsefulness AS (
         SELECT
             r.user_id,
@@ -224,7 +242,7 @@ def get_top_10_useful_with_query(request):
         *
         FROM
         Top10UsefulUsers;"""
-    
+
     query_job = client.query(sql_query)
 
     # Fetch the results
@@ -234,7 +252,7 @@ def get_top_10_useful_with_query(request):
 
     rows = [dict(row) for row in results]
 
-    str1=""" <table border='1'>
+    str1 = """ <table border='1'>
             <thead>
             <tr>
                 <th>name</th>
@@ -243,14 +261,19 @@ def get_top_10_useful_with_query(request):
             </tr>
         </thead><tbody>"""
     for row in rows:
-        str1+='<tr><td>'+str(row['name'])+'</td><td>'+str(row['total_usefulness'])+'</td></tr>'
+        str1 += '<tr><td>' + str(row['name']) + '</td><td>' + str(row['total_usefulness']) + '</td></tr>'
 
-    str1+="</tbody></table>"
+    str1 += "</tbody></table>"
     # Return the results as JSON
-   
+    end_time = time.time()
+    time_taken = end_time - start_time
+    print(f"Time taken: {time_taken} seconds")
+
     return HttpResponse(f"<h1>Top 10 Restaurants</h1>{str1}")
 
+
 def get_top_10_useful(request):
+    start_time = time.time()
     spark = SparkSession.builder.appName('comp6231DSD').getOrCreate()
 
     yelp_user = spark.read.json("data/yelp_academic_dataset_user.json")
@@ -267,12 +290,14 @@ def get_top_10_useful(request):
     top_10_users = most_useful_users.limit(10).select('name', 'total_usefulness')
     pandas_df = top_10_users.toPandas()
     table_html = pandas_df.to_html(index=False)
+    end_time = time.time()
+    time_taken = end_time - start_time
+    print(f"Time taken: {time_taken} seconds")
     return HttpResponse(f"<h1>Top 10 users with useful reviews</h1>{table_html}")
 
 
-
 def get_3_star_reviews_with_query(request):
-
+    start_time = time.time()
     sql_query = """WITH Star4Reviews AS (
         SELECT
             r.business_id
@@ -326,7 +351,6 @@ def get_3_star_reviews_with_query(request):
         SELECT COUNT(*) FROM JoinedDF as total_count
     """
 
-
     query_job = client.query(sql_query)
 
     # Fetch the results
@@ -337,21 +361,25 @@ def get_3_star_reviews_with_query(request):
 
     rows = [dict(row) for row in results]
 
-    str1=""" <table border='1'>
+    str1 = """ <table border='1'>
             <thead>
             <tr>
                 <th>total count</th>
             </tr>
         </thead><tbody>"""
     for row in rows:
-      str1+='<tr><td>'+str(row['f0_'])+'</td></tr>'
+        str1 += '<tr><td>' + str(row['f0_']) + '</td></tr>'
 
-    str1+="</tbody></table>"
-   
-   
+    str1 += "</tbody></table>"
+    end_time = time.time()
+    time_taken = end_time - start_time
+    print(f"Time taken: {time_taken} seconds")
+
     return HttpResponse(f"<h1>Top 10 Restaurants</h1>{str1}")
 
+
 def get_3_star_reviews(request):
+    start_time =time.time()
     spark = SparkSession.builder.appName('comp6231DSD').getOrCreate()
 
     yelp_business = spark.read.json("data/yelp_academic_dataset_business.json")
@@ -367,5 +395,8 @@ def get_3_star_reviews(request):
     count = joined_df.count()
     pandas_df = joined_df.toPandas()
     table_html = pandas_df.to_html(index=False)
+    end_time = time.time()
+    time_taken = end_time - start_time
+    print(f"Time taken: {time_taken} seconds")
     return HttpResponse(f"<h1>Top businesses that were given 3 starts in 2018</h1>{table_html}"
                         f"<h2>Total number</h2>{count}")
