@@ -5,6 +5,81 @@ from django.http import HttpResponse
 from pyspark.sql.functions import sum as _sum
 from pyspark.sql.functions import count as _count
 
+from google.cloud import bigquery
+from django.http import JsonResponse
+
+client = bigquery.Client()
+
+def get_top_10_restaurants_with_query(request):
+    # Create a BigQuery client
+    
+
+    # Specify your BigQuery dataset and table
+
+    # Build the SQL query
+    sql_query = """
+    WITH Reviews_5Stars AS (
+      SELECT
+        business_id,
+        COUNT(*) AS count
+      FROM
+        `dsd-project-practice.demobigquery.review`
+      WHERE
+        stars = 5
+        AND useful >= 1
+      GROUP BY
+        business_id
+    ),
+
+    Top10Restaurants AS (
+      SELECT
+        b.name,
+        r.count
+      FROM
+        Reviews_5Stars r
+      JOIN
+        `dsd-project-practice.demobigquery.business` b
+      ON
+        r.business_id = b.business_id
+      WHERE
+        b.is_open = 1
+      ORDER BY
+        r.count DESC
+      LIMIT
+        10
+    )
+
+    SELECT
+      *
+    FROM
+      Top10Restaurants
+    """
+
+    # Run the query
+    query_job = client.query(sql_query)
+
+    # Fetch the results
+    results = query_job.result()
+
+    # Convert results to a list of dictionaries
+
+    rows = [dict(row) for row in results]
+    
+    str1=""" <table border='1'>
+            <thead>
+            <tr>
+                <th>name</th>
+                <th>count</th>
+              
+            </tr>
+        </thead><tbody>"""
+    for row in rows:
+        str1+='<tr><td>'+row['name']+'</td><td>'+str(row['count'])+'</td></tr>'
+
+    str1+="</tbody></table>"
+    # Return the results as JSON
+   
+    return HttpResponse(f"<h1>Top 10 Restaurants</h1>{str1}")
 
 
 def get_top_10_restaurants(request):
@@ -33,6 +108,68 @@ def get_top_10_restaurants(request):
 
     return HttpResponse(f"<h1>Top 10 Restaurants</h1>{table_html}")
 
+def get_top_5_users_with_query(request):
+
+    sql_query = """ WITH yelp_user AS (
+        SELECT
+            user_id,
+            name,
+            IFNULL(compliment_hot, 0) +
+            IFNULL(compliment_more, 0) +
+            IFNULL(compliment_cool, 0) +
+            IFNULL(compliment_cute, 0) +
+            IFNULL(compliment_list, 0) +
+            IFNULL(compliment_funny, 0) +
+            IFNULL(compliment_note, 0) +
+            IFNULL(compliment_photos, 0) +
+            IFNULL(compliment_plain, 0) +
+            IFNULL(compliment_profile, 0) +
+            IFNULL(compliment_writer, 0) AS total_compliments
+        FROM
+            dsd-project-practice.demobigquery.yelp_user
+        WHERE
+            name IS NOT NULL
+            AND user_id IS NOT NULL
+        )
+
+        SELECT
+        user_id,
+        name,
+        total_compliments
+        FROM
+        yelp_user
+        ORDER BY
+        total_compliments DESC
+        LIMIT  5;
+    """
+
+    query_job = client.query(sql_query)
+
+    # Fetch the results
+    results = query_job.result()
+
+    # Convert results to a list of dictionaries
+
+    rows = [dict(row) for row in results]
+
+    str1=""" <table border='1'>
+            <thead>
+            <tr>
+             <th>user_id</th>
+                <th>name</th>
+                <th>total_compliments</th>
+              
+            </tr>
+        </thead><tbody>"""
+    for row in rows:
+        str1+='<tr><td>'+row['user_id']+'</td><td>'+str(row['name'])+'</td><td>'+str(row['total_compliments'])+'</td></tr>'
+
+    str1+="</tbody></table>"
+    # Return the results as JSON
+   
+    return HttpResponse(f"<h1>Top 10 Restaurants</h1>{str1}")
+
+
 
 def get_top_5_users(request):
     spark = SparkSession.builder.appName('comp6231DSD').getOrCreate()
@@ -52,6 +189,66 @@ def get_top_5_users(request):
 
     return HttpResponse(f"<h1>Top 5 Users</h1>{table_html}")
 
+def get_top_10_useful_with_query(request):
+    
+    sql_query = """ WITH UserUsefulness AS (
+        SELECT
+            r.user_id,
+            SUM(r.useful) AS total_usefulness
+        FROM
+            dsd-project-practice.demobigquery.review r
+        WHERE
+            r.user_id IS NOT NULL
+            AND r.useful IS NOT NULL
+        GROUP BY
+            r.user_id
+        ),
+
+        Top10UsefulUsers AS (
+        SELECT
+            u.name,
+            uu.total_usefulness
+        FROM
+            UserUsefulness uu
+        JOIN
+            dsd-project-practice.demobigquery.yelp_user u
+        ON
+            uu.user_id = u.user_id
+        ORDER BY
+            uu.total_usefulness DESC
+        LIMIT
+            10
+        )
+
+        SELECT
+        *
+        FROM
+        Top10UsefulUsers;"""
+    
+    query_job = client.query(sql_query)
+
+    # Fetch the results
+    results = query_job.result()
+
+    # Convert results to a list of dictionaries
+
+    rows = [dict(row) for row in results]
+
+    str1=""" <table border='1'>
+            <thead>
+            <tr>
+                <th>name</th>
+                <th>total_usefulness</th>
+              
+            </tr>
+        </thead><tbody>"""
+    for row in rows:
+        str1+='<tr><td>'+str(row['name'])+'</td><td>'+str(row['total_usefulness'])+'</td></tr>'
+
+    str1+="</tbody></table>"
+    # Return the results as JSON
+   
+    return HttpResponse(f"<h1>Top 10 Restaurants</h1>{str1}")
 
 def get_top_10_useful(request):
     spark = SparkSession.builder.appName('comp6231DSD').getOrCreate()
@@ -72,6 +269,87 @@ def get_top_10_useful(request):
     table_html = pandas_df.to_html(index=False)
     return HttpResponse(f"<h1>Top 10 users with useful reviews</h1>{table_html}")
 
+
+
+def get_3_star_reviews_with_query(request):
+
+    sql_query = """WITH Star4Reviews AS (
+        SELECT
+            r.business_id
+        FROM
+            dsd-project-practice.demobigquery.review r
+        WHERE
+            r.stars > 3
+            AND EXTRACT(YEAR FROM DATE(r.date)) = 2018
+        ),
+
+        Business4Stars AS (
+        SELECT
+            business_id,
+            COUNT(*) AS count
+        FROM
+            Star4Reviews
+        GROUP BY
+            business_id
+        ),
+
+        Business50 AS (
+        SELECT
+            b.business_id, b.count
+        FROM
+            Business4Stars b
+        WHERE
+            b.count >= 50
+        ),
+
+        BusinessPA AS (
+        SELECT
+            business_id
+        FROM
+            dsd-project-practice.demobigquery.business
+        WHERE
+            state = 'PA'
+        ),
+
+        JoinedDF AS (
+        SELECT
+            b50.business_id,
+            b50.count
+        FROM
+            Business50 b50
+        JOIN
+            BusinessPA bpa
+        ON
+            b50.business_id = bpa.business_id
+        )
+
+        SELECT COUNT(*) FROM JoinedDF as total_count
+    """
+
+
+    query_job = client.query(sql_query)
+
+    # Fetch the results
+    results = query_job.result()
+    print(type(results))
+
+    # Convert results to a list of dictionaries
+
+    rows = [dict(row) for row in results]
+
+    str1=""" <table border='1'>
+            <thead>
+            <tr>
+                <th>total count</th>
+            </tr>
+        </thead><tbody>"""
+    for row in rows:
+      str1+='<tr><td>'+str(row['f0_'])+'</td></tr>'
+
+    str1+="</tbody></table>"
+   
+   
+    return HttpResponse(f"<h1>Top 10 Restaurants</h1>{str1}")
 
 def get_3_star_reviews(request):
     spark = SparkSession.builder.appName('comp6231DSD').getOrCreate()
