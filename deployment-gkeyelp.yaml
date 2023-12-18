@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gkeyelp-django
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gkeyelp-django
+  template:
+    metadata:
+      labels:
+        app: gkeyelp-django
+    spec:
+      containers:
+      - name: gkeyelp-django
+        image: gcr.io/focus-vertex-407519/gkeyelp:latest
+        ports:
+        - containerPort: 8000

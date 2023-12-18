@@ -14,10 +14,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
-# Load environment variables from .env file
-load_dotenv()
+# # # Load environment variables from .env file
+# load_dotenv()
 
-# Access the GOOGLE_APPLICATION_CREDENTIALS variable
+credential_path = "service-account-key.json"
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credential_path
+
+# # Access the GOOGLE_APPLICATION_CREDENTIALS variable
 credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
 

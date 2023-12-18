@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gkeyelp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gkeyelp
+  template:
+    metadata:
+      labels:
+        app: gkeyelp
+    spec:
+      containers:
+      - name: gkeyelp
+        image: gcr.io/focus-vertex-407519/gkeyelp:latest
+        ports:
+        - containerPort: 8000
+
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mypysparkweb-autoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gkeyelp
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 50

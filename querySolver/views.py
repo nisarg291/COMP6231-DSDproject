@@ -68,7 +68,8 @@ def get_top_10_restaurants_with_query(request):
 
     rows = [dict(row) for row in results]
 
-    str1 = """ <table border='1'>
+    
+    str1=""" <table border='1'>
             <thead>
             <tr>
                 <th>name</th>
@@ -90,7 +91,6 @@ def get_top_10_restaurants_with_query(request):
 def get_top_10_restaurants(request):
     start_time = time.time()
     spark = SparkSession.builder.appName('comp6231DSD').getOrCreate()
-
     yelp_reviews = spark.read.json("data/yelp_academic_dataset_review.json")
     yelp_business = spark.read.json("data/yelp_academic_dataset_business.json")
 
@@ -115,7 +115,69 @@ def get_top_10_restaurants(request):
     time_taken = end_time - start_time
     print(f"Time taken: {time_taken} seconds")
 
-    return HttpResponse(f"<h1>Top 10 Restaurants</h1>{table_html}")
+    return HttpResponse(f"<h1>Which are the top 10 restaurants were rated 5 stars by most users?</h1>{table_html}")
+
+def get_top_5_users_with_query(request):
+
+    sql_query = """ WITH yelp_user AS (
+        SELECT
+            user_id,
+            name,
+            IFNULL(compliment_hot, 0) +
+            IFNULL(compliment_more, 0) +
+            IFNULL(compliment_cool, 0) +
+            IFNULL(compliment_cute, 0) +
+            IFNULL(compliment_list, 0) +
+            IFNULL(compliment_funny, 0) +
+            IFNULL(compliment_note, 0) +
+            IFNULL(compliment_photos, 0) +
+            IFNULL(compliment_plain, 0) +
+            IFNULL(compliment_profile, 0) +
+            IFNULL(compliment_writer, 0) AS total_compliments
+        FROM
+            dsd-project-practice.demobigquery.yelp_user
+        WHERE
+            name IS NOT NULL
+            AND user_id IS NOT NULL
+        )
+
+        SELECT
+        user_id,
+        name,
+        total_compliments
+        FROM
+        yelp_user
+        ORDER BY
+        total_compliments DESC
+        LIMIT  5;
+    """
+
+    query_job = client.query(sql_query)
+
+    # Fetch the results
+    results = query_job.result()
+
+    # Convert results to a list of dictionaries
+
+    rows = [dict(row) for row in results]
+
+    str1=""" <table border='1'>
+            <thead>
+            <tr>
+             <th>user_id</th>
+                <th>name</th>
+                <th>total_compliments</th>
+              
+            </tr>
+        </thead><tbody>"""
+    for row in rows:
+        str1+='<tr><td>'+row['user_id']+'</td><td>'+str(row['name'])+'</td><td>'+str(row['total_compliments'])+'</td></tr>'
+
+    str1+="</tbody></table>"
+    # Return the results as JSON
+   
+    return HttpResponse(f"<h1>Which are the top 5 user names that have received the most compliments?</h1>{str1}")
+
 
 
 def get_top_5_users_with_query(request):
@@ -204,8 +266,68 @@ def get_top_5_users(request):
     time_taken = end_time - start_time
     print(f"Time taken: {time_taken} seconds")
 
-    return HttpResponse(f"<h1>Top 5 Users</h1>{table_html}")
+    return HttpResponse(f"<h1>Which are the top 5 user names that have received the most compliments?</h1>{table_html}")
 
+def get_top_10_useful_with_query(request):
+    
+    sql_query = """ WITH UserUsefulness AS (
+        SELECT
+            r.user_id,
+            SUM(r.useful) AS total_usefulness
+        FROM
+            dsd-project-practice.demobigquery.review r
+        WHERE
+            r.user_id IS NOT NULL
+            AND r.useful IS NOT NULL
+        GROUP BY
+            r.user_id
+        ),
+
+        Top10UsefulUsers AS (
+        SELECT
+            u.name,
+            uu.total_usefulness
+        FROM
+            UserUsefulness uu
+        JOIN
+            dsd-project-practice.demobigquery.yelp_user u
+        ON
+            uu.user_id = u.user_id
+        ORDER BY
+            uu.total_usefulness DESC
+        LIMIT
+            10
+        )
+
+        SELECT
+        *
+        FROM
+        Top10UsefulUsers;"""
+    
+    query_job = client.query(sql_query)
+
+    # Fetch the results
+    results = query_job.result()
+
+    # Convert results to a list of dictionaries
+
+    rows = [dict(row) for row in results]
+
+    str1=""" <table border='1'>
+            <thead>
+            <tr>
+                <th>name</th>
+                <th>total_usefulness</th>
+              
+            </tr>
+        </thead><tbody>"""
+    for row in rows:
+        str1+='<tr><td>'+str(row['name'])+'</td><td>'+str(row['total_usefulness'])+'</td></tr>'
+
+    str1+="</tbody></table>"
+    # Return the results as JSON
+   
+    return HttpResponse(f"<h1>Which are the top 10 user names whose reviews other users found useful?</h1>{str1}")
 
 def get_top_10_useful_with_query(request):
     start_time=time.time()
